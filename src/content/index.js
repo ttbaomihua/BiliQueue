@@ -11,6 +11,7 @@ const MESSAGE_TYPES = {
 };
 
 let currentQueue = null;
+let currentVideoBvid = null;
 const queueListeners = new Set();
 
 function notifyQueueListeners(queue) {
@@ -292,6 +293,78 @@ function initHoverAddButton() {
   });
 }
 
+function isVideoPage(url) {
+  return /\\/video\\/BV[\\w]+/i.test(url);
+}
+
+function getCurrentVideoBvid() {
+  return extractBvid(location.href);
+}
+
+async function handleVideoPageChange() {
+  const bvid = getCurrentVideoBvid();
+  if (!bvid || bvid === currentVideoBvid) return;
+  currentVideoBvid = bvid;
+
+  const queue = currentQueue;
+  if (!queue || !Array.isArray(queue.items) || queue.items.length === 0) return;
+
+  const exists = queue.items.some((item) => item && item.bvid === bvid);
+  if (exists) return;
+
+  const item = {
+    bvid,
+    url: location.href,
+    title: document.title?.trim() || "Untitled",
+    cover: null,
+    cid: null,
+    duration: null,
+  };
+
+  const insertIndex =
+    Number.isInteger(queue.currentIndex) && queue.currentIndex >= 0
+      ? queue.currentIndex + 1
+      : queue.items.length;
+  const response = await addQueueItem(item, insertIndex);
+  if (response?.ok) showToast("Added to queue");
+}
+
+function patchHistory() {
+  const originalPush = history.pushState;
+  const originalReplace = history.replaceState;
+
+  history.pushState = function pushStateWrapper() {
+    const result = originalPush.apply(this, arguments);
+    window.dispatchEvent(new Event("bq:navigation"));
+    return result;
+  };
+
+  history.replaceState = function replaceStateWrapper() {
+    const result = originalReplace.apply(this, arguments);
+    window.dispatchEvent(new Event("bq:navigation"));
+    return result;
+  };
+}
+
+function initUrlMonitor() {
+  patchHistory();
+  window.addEventListener("popstate", () => {
+    handleVideoPageChange().catch((error) => {
+      console.warn("[BiliQueue] URL change failed", error);
+    });
+  });
+  window.addEventListener("bq:navigation", () => {
+    handleVideoPageChange().catch((error) => {
+      console.warn("[BiliQueue] URL change failed", error);
+    });
+  });
+  if (isVideoPage(location.href)) {
+    handleVideoPageChange().catch((error) => {
+      console.warn("[BiliQueue] URL change failed", error);
+    });
+  }
+}
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (!message?.type) return false;
   if (message.type === "CONTEXT_ADD") {
@@ -327,3 +400,4 @@ window.BiliQueue = {
 };
 
 initHoverAddButton();
+initUrlMonitor();
