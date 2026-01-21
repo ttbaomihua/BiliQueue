@@ -299,6 +299,34 @@ function getQueueIndexForBvid(queue, bvid) {
   return queue.items.findIndex((item) => item && item.bvid === bvid);
 }
 
+function getMultiPartInfo() {
+  const container =
+    document.querySelector("#multi_page") ||
+    document.querySelector(".multi-page") ||
+    document.querySelector(".video-paging-panel") ||
+    document.querySelector(".video-episode-card__list");
+  if (!container) return { isMultiPart: false, hasNextPart: false };
+
+  const items = Array.from(
+    container.querySelectorAll("li, .part-item, .video-episode-card")
+  ).filter((node) => node instanceof HTMLElement);
+  if (items.length <= 1) {
+    return { isMultiPart: false, hasNextPart: false };
+  }
+
+  const activeIndex = items.findIndex(
+    (item) =>
+      item.classList.contains("on") ||
+      item.classList.contains("active") ||
+      item.getAttribute("aria-current") === "true"
+  );
+  const resolvedIndex = activeIndex === -1 ? 0 : activeIndex;
+  return {
+    isMultiPart: true,
+    hasNextPart: resolvedIndex < items.length - 1,
+  };
+}
+
 async function handleVideoEnded() {
   const queue = currentQueue;
   if (!queue || !Array.isArray(queue.items) || queue.items.length === 0) return;
@@ -311,7 +339,13 @@ async function handleVideoEnded() {
   }
 
   const nextIndex = index + 1;
-  if (nextIndex < 0 || nextIndex >= queue.items.length) return;
+  if (nextIndex < 0 || nextIndex >= queue.items.length) {
+    const { isMultiPart, hasNextPart } = getMultiPartInfo();
+    if (isMultiPart && hasNextPart) {
+      return;
+    }
+    return;
+  }
 
   const nextItem = queue.items[nextIndex];
   if (!nextItem?.url) return;
