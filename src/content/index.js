@@ -113,6 +113,58 @@ async function handleContextAdd(payload) {
     duration: null,
   };
   await addQueueItem(item);
+  showToast("Added to queue");
+}
+
+const TOAST_ID = "biliqueue-toast";
+const TOAST_STYLE_ID = "biliqueue-toast-style";
+
+function ensureToastStyles() {
+  if (document.getElementById(TOAST_STYLE_ID)) return;
+  const style = document.createElement("style");
+  style.id = TOAST_STYLE_ID;
+  style.textContent = `
+    .bq-toast {
+      position: fixed;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(18, 22, 28, 0.92);
+      color: #e9f0f6;
+      font-family: "Avenir Next", "Trebuchet MS", "Segoe UI", sans-serif;
+      font-size: 12px;
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
+      z-index: 999999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease, transform 0.2s ease;
+    }
+    .bq-toast.is-visible {
+      opacity: 1;
+      transform: translate(-50%, 0);
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function showToast(message) {
+  ensureToastStyles();
+  let toast = document.getElementById(TOAST_ID);
+  if (!toast) {
+    toast = document.createElement("div");
+    toast.id = TOAST_ID;
+    toast.className = "bq-toast";
+    document.body.appendChild(toast);
+  }
+  toast.textContent = message;
+  toast.classList.add("is-visible");
+  clearTimeout(showToast._timer);
+  showToast._timer = setTimeout(() => {
+    toast.classList.remove("is-visible");
+  }, 1000);
 }
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -146,4 +198,5 @@ window.BiliQueue = {
   removeQueueItem,
   reorderQueue,
   setCurrentIndex,
+  showToast,
 };
