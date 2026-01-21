@@ -118,6 +118,8 @@ async function handleContextAdd(payload) {
 
 const TOAST_ID = "biliqueue-toast";
 const TOAST_STYLE_ID = "biliqueue-toast-style";
+const ADD_BTN_STYLE_ID = "biliqueue-add-style";
+const ADD_BTN_CLASS = "bq-add-btn";
 
 function ensureToastStyles() {
   if (document.getElementById(TOAST_STYLE_ID)) return;
@@ -167,6 +169,129 @@ function showToast(message) {
   }, 1000);
 }
 
+function ensureAddButtonStyles() {
+  if (document.getElementById(ADD_BTN_STYLE_ID)) return;
+  const style = document.createElement("style");
+  style.id = ADD_BTN_STYLE_ID;
+  style.textContent = `
+    .bq-add-wrap {
+      position: relative;
+    }
+    .${ADD_BTN_CLASS} {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      background: rgba(18, 22, 28, 0.8);
+      color: #e9f0f6;
+      font-size: 16px;
+      line-height: 24px;
+      text-align: center;
+      cursor: pointer;
+      opacity: 0;
+      transform: scale(0.92);
+      transition: opacity 0.2s ease, transform 0.2s ease;
+      z-index: 2;
+    }
+    .bq-add-wrap:hover .${ADD_BTN_CLASS} {
+      opacity: 1;
+      transform: scale(1);
+    }
+  `;
+  document.head.appendChild(style);
+}
+
+function findAnchorTitle(anchor) {
+  if (anchor.getAttribute("title")) return anchor.getAttribute("title").trim();
+  if (anchor.getAttribute("aria-label"))
+    return anchor.getAttribute("aria-label").trim();
+  const text = anchor.textContent?.trim();
+  return text || document.title?.trim() || "Untitled";
+}
+
+function findAnchorCover(anchor) {
+  const img = anchor.querySelector("img");
+  if (!img) return null;
+  return img.getAttribute("data-src") || img.getAttribute("src");
+}
+
+function buildItemFromAnchor(anchor) {
+  const url = anchor.href;
+  const bvid = extractBvid(url);
+  if (!bvid) return null;
+  return {
+    bvid,
+    url,
+    title: findAnchorTitle(anchor),
+    cover: findAnchorCover(anchor),
+    cid: null,
+    duration: null,
+  };
+}
+
+function ensureAddButton(anchor) {
+  if (anchor.dataset.bqProcessed) return;
+  anchor.dataset.bqProcessed = "true";
+
+  const container =
+    anchor.closest(
+      ".bili-video-card, .bili-video-card__wrap, .bili-video-card__image, .bili-video-card__cover, .video-card, .feed-card, .cover"
+    ) || anchor;
+
+  if (!container) return;
+  container.classList.add("bq-add-wrap");
+  if (container.querySelector(`.${ADD_BTN_CLASS}`)) return;
+
+  const button = document.createElement("button");
+  button.className = ADD_BTN_CLASS;
+  button.type = "button";
+  button.textContent = "+";
+  button.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const item = buildItemFromAnchor(anchor);
+    if (!item) return;
+    addQueueItem(item).then((response) => {
+      if (response?.ok) showToast("Added to queue");
+    });
+  });
+
+  container.appendChild(button);
+}
+
+function scanForVideoAnchors(root = document) {
+  const anchors = root.querySelectorAll('a[href*="/video/BV"]');
+  anchors.forEach((anchor) => ensureAddButton(anchor));
+}
+
+function initHoverAddButton() {
+  ensureAddButtonStyles();
+  scanForVideoAnchors();
+
+  const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+      mutation.addedNodes.forEach((node) => {
+        if (!(node instanceof HTMLElement)) return;
+        if (node.tagName === "A") {
+          if (node.getAttribute("href")?.includes("/video/BV")) {
+            ensureAddButton(node);
+          }
+          return;
+        }
+        scanForVideoAnchors(node);
+      });
+    });
+  });
+
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+  });
+}
+
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (!message?.type) return false;
   if (message.type === "CONTEXT_ADD") {
@@ -200,3 +325,5 @@ window.BiliQueue = {
   setCurrentIndex,
   showToast,
 };
+
+initHoverAddButton();
