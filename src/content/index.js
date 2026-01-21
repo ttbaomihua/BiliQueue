@@ -14,6 +14,7 @@ let currentQueue = null;
 let currentVideoBvid = null;
 let currentVideoEl = null;
 let errorAdvanceTimer = null;
+let isRehydratingIndex = false;
 const queueListeners = new Set();
 
 function notifyQueueListeners(queue) {
@@ -30,6 +31,9 @@ function notifyQueueListeners(queue) {
 function setQueueState(queue) {
   currentQueue = queue;
   notifyQueueListeners(queue);
+  syncCurrentIndexWithPage(queue).catch((error) => {
+    console.warn("[BiliQueue] rehydrate index failed", error);
+  });
 }
 
 function onQueueChange(listener) {
@@ -411,6 +415,26 @@ function getCurrentVideoBvid() {
   return extractBvid(location.href);
 }
 
+async function syncCurrentIndexWithPage(queue) {
+  if (isRehydratingIndex) return;
+  if (!queue || !Array.isArray(queue.items) || queue.items.length === 0) return;
+  if (!isVideoPage(location.href)) return;
+
+  const bvid = getCurrentVideoBvid();
+  if (!bvid) return;
+
+  const index = getQueueIndexForBvid(queue, bvid);
+  if (index === -1) return;
+  if (index === queue.currentIndex) return;
+
+  isRehydratingIndex = true;
+  try {
+    await setCurrentIndex(index);
+  } finally {
+    isRehydratingIndex = false;
+  }
+}
+
 async function handleVideoPageChange() {
   const bvid = getCurrentVideoBvid();
   if (!bvid || bvid === currentVideoBvid) return;
@@ -437,6 +461,7 @@ async function handleVideoPageChange() {
       : queue.items.length;
   const response = await addQueueItem(item, insertIndex);
   if (response?.ok) showToast("Added to queue");
+  await syncCurrentIndexWithPage(currentQueue);
 }
 
 function patchHistory() {
