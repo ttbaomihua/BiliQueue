@@ -12,6 +12,7 @@ const MESSAGE_TYPES = {
 
 let currentQueue = null;
 let currentVideoBvid = null;
+let currentVideoEl = null;
 const queueListeners = new Set();
 
 function notifyQueueListeners(queue) {
@@ -293,6 +294,67 @@ function initHoverAddButton() {
   });
 }
 
+function getQueueIndexForBvid(queue, bvid) {
+  if (!queue || !Array.isArray(queue.items)) return -1;
+  return queue.items.findIndex((item) => item && item.bvid === bvid);
+}
+
+async function handleVideoEnded() {
+  const queue = currentQueue;
+  if (!queue || !Array.isArray(queue.items) || queue.items.length === 0) return;
+
+  const currentBvid = getCurrentVideoBvid();
+  let index = Number.isInteger(queue.currentIndex) ? queue.currentIndex : -1;
+  if (currentBvid) {
+    const matchIndex = getQueueIndexForBvid(queue, currentBvid);
+    if (matchIndex !== -1) index = matchIndex;
+  }
+
+  const nextIndex = index + 1;
+  if (nextIndex < 0 || nextIndex >= queue.items.length) return;
+
+  const nextItem = queue.items[nextIndex];
+  if (!nextItem?.url) return;
+
+  await setCurrentIndex(nextIndex);
+  location.href = nextItem.url;
+}
+
+function attachVideoListener(video) {
+  if (!video || video === currentVideoEl) return;
+  if (currentVideoEl) {
+    currentVideoEl.removeEventListener("ended", handleVideoEnded);
+  }
+  currentVideoEl = video;
+  currentVideoEl.addEventListener("ended", () => {
+    handleVideoEnded().catch((error) => {
+      console.warn("[BiliQueue] video ended handling failed", error);
+    });
+  });
+}
+
+function findVideoElement() {
+  return document.querySelector("video");
+}
+
+function initPlayerHook() {
+  const tryAttach = () => {
+    const video = findVideoElement();
+    if (video) attachVideoListener(video);
+  };
+
+  tryAttach();
+
+  const observer = new MutationObserver(() => {
+    tryAttach();
+  });
+
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true,
+  });
+}
+
 function isVideoPage(url) {
   return /\\/video\\/BV[\\w]+/i.test(url);
 }
@@ -352,16 +414,19 @@ function initUrlMonitor() {
     handleVideoPageChange().catch((error) => {
       console.warn("[BiliQueue] URL change failed", error);
     });
+    initPlayerHook();
   });
   window.addEventListener("bq:navigation", () => {
     handleVideoPageChange().catch((error) => {
       console.warn("[BiliQueue] URL change failed", error);
     });
+    initPlayerHook();
   });
   if (isVideoPage(location.href)) {
     handleVideoPageChange().catch((error) => {
       console.warn("[BiliQueue] URL change failed", error);
     });
+    initPlayerHook();
   }
 }
 
