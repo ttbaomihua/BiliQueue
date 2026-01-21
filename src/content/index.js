@@ -62,6 +62,34 @@ async function addQueueItem(item, insertIndex) {
   return response;
 }
 
+async function removeQueueItem(bvid) {
+  const response = await sendQueueMessage({
+    type: MESSAGE_TYPES.QUEUE_REMOVE_ITEM,
+    bvid,
+  });
+  if (response?.ok) setQueueState(response.queue ?? null);
+  return response;
+}
+
+async function reorderQueue(fromIndex, toIndex) {
+  const response = await sendQueueMessage({
+    type: MESSAGE_TYPES.QUEUE_REORDER,
+    fromIndex,
+    toIndex,
+  });
+  if (response?.ok) setQueueState(response.queue ?? null);
+  return response;
+}
+
+async function setCurrentIndex(currentIndex) {
+  const response = await sendQueueMessage({
+    type: MESSAGE_TYPES.QUEUE_SET_CURRENT,
+    currentIndex,
+  });
+  if (response?.ok) setQueueState(response.queue ?? null);
+  return response;
+}
+
 function extractBvid(url) {
   const match = url.match(/\\/video\\/(BV[\\w]+)/i);
   return match ? match[1] : null;
@@ -115,4 +143,7 @@ window.BiliQueue = {
   onQueueChange,
   getQueue,
   addQueueItem,
+  removeQueueItem,
+  reorderQueue,
+  setCurrentIndex,
 };

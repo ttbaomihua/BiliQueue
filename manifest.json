@@ -19,7 +19,7 @@
   "content_scripts": [
     {
       "matches": ["https://*.bilibili.com/*"],
-      "js": ["src/content/index.js"],
+      "js": ["src/content/index.js", "src/ui/panel.js"],
       "run_at": "document_idle"
     }
   ]
