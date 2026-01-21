@@ -1,0 +1,25 @@
+{
+  "manifest_version": 3,
+  "name": "BiliQueue",
+  "version": "0.1.0",
+  "description": "Single-tab queue enhancement for Bilibili.",
+  "permissions": [
+    "storage",
+    "contextMenus",
+    "tabs",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://*.bilibili.com/*"
+  ],
+  "background": {
+    "service_worker": "src/background/index.js"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://*.bilibili.com/*"],
+      "js": ["src/content/index.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
