@@ -15,6 +15,7 @@ let currentVideoBvid = null;
 let currentVideoEl = null;
 let errorAdvanceTimer = null;
 let isRehydratingIndex = false;
+let pendingRemovalBvid = null;
 const queueListeners = new Set();
 
 function notifyQueueListeners(queue) {
@@ -31,6 +32,7 @@ function notifyQueueListeners(queue) {
 function setQueueState(queue) {
   currentQueue = queue;
   notifyQueueListeners(queue);
+  maybeAdvanceAfterRemoval(queue);
   syncCurrentIndexWithPage(queue).catch((error) => {
     console.warn("[BiliQueue] rehydrate index failed", error);
   });
@@ -70,6 +72,7 @@ async function addQueueItem(item, insertIndex) {
 }
 
 async function removeQueueItem(bvid) {
+  pendingRemovalBvid = bvid || null;
   const response = await sendQueueMessage({
     type: MESSAGE_TYPES.QUEUE_REMOVE_ITEM,
     bvid,
@@ -302,6 +305,23 @@ function initHoverAddButton() {
 function getQueueIndexForBvid(queue, bvid) {
   if (!queue || !Array.isArray(queue.items)) return -1;
   return queue.items.findIndex((item) => item && item.bvid === bvid);
+}
+
+function maybeAdvanceAfterRemoval(queue) {
+  if (!pendingRemovalBvid) return;
+  const removedBvid = pendingRemovalBvid;
+  pendingRemovalBvid = null;
+
+  if (!isVideoPage(location.href)) return;
+  const currentBvid = getCurrentVideoBvid();
+  if (!currentBvid || currentBvid !== removedBvid) return;
+  if (!queue || !Array.isArray(queue.items) || queue.items.length === 0) return;
+  if (getQueueIndexForBvid(queue, removedBvid) !== -1) return;
+
+  const nextItem = queue.items[queue.currentIndex];
+  if (nextItem?.url && nextItem.url !== location.href) {
+    location.href = nextItem.url;
+  }
 }
 
 function getMultiPartInfo() {
