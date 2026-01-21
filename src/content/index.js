@@ -13,6 +13,7 @@ const MESSAGE_TYPES = {
 let currentQueue = null;
 let currentVideoBvid = null;
 let currentVideoEl = null;
+let errorAdvanceTimer = null;
 const queueListeners = new Set();
 
 function notifyQueueListeners(queue) {
@@ -354,10 +355,21 @@ async function handleVideoEnded() {
   location.href = nextItem.url;
 }
 
+function scheduleErrorAdvance() {
+  clearTimeout(errorAdvanceTimer);
+  errorAdvanceTimer = setTimeout(() => {
+    handleVideoEnded().catch((error) => {
+      console.warn("[BiliQueue] error advance failed", error);
+    });
+  }, 3000);
+}
+
 function attachVideoListener(video) {
   if (!video || video === currentVideoEl) return;
   if (currentVideoEl) {
     currentVideoEl.removeEventListener("ended", handleVideoEnded);
+    currentVideoEl.removeEventListener("error", scheduleErrorAdvance);
+    currentVideoEl.removeEventListener("stalled", scheduleErrorAdvance);
   }
   currentVideoEl = video;
   currentVideoEl.addEventListener("ended", () => {
@@ -365,6 +377,8 @@ function attachVideoListener(video) {
       console.warn("[BiliQueue] video ended handling failed", error);
     });
   });
+  currentVideoEl.addEventListener("error", scheduleErrorAdvance);
+  currentVideoEl.addEventListener("stalled", scheduleErrorAdvance);
 }
 
 function findVideoElement() {
