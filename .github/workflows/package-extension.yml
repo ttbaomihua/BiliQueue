@@ -12,6 +12,8 @@ on:
 jobs:
   package:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -97,4 +99,5 @@ jobs:
         uses: ncipollo/release-action@v1
         with:
           tag: ${{ github.ref_name }}
-          files: BiliQueue-*.zip
+          artifacts: BiliQueue-*.zip 
+          token: ${{ secrets.GITHUB_TOKEN }}
