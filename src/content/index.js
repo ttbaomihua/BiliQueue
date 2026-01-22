@@ -119,8 +119,10 @@ async function handleContextAdd(payload) {
     url: payload.url,
     title: findTitleForUrl(payload.url),
     cover: null,
+    author: null,
     cid: null,
     duration: null,
+    durationText: null,
   };
   await addQueueItem(item);
   showToast("Added to queue");
@@ -241,6 +243,62 @@ function findAnchorCover(anchor) {
   return img.getAttribute("data-src") || img.getAttribute("src");
 }
 
+function normalizeText(value) {
+  if (!value) return "";
+  return String(value).replace(/\s+/g, " ").trim();
+}
+
+function getAnchorContainer(anchor) {
+  return (
+    anchor.closest(
+      ".bili-video-card, .bili-video-card__wrap, .bili-video-card__image, .bili-video-card__cover, .video-card, .feed-card, .cover"
+    ) || anchor
+  );
+}
+
+function findTextBySelectors(container, selectors) {
+  for (const selector of selectors) {
+    const el = container.querySelector(selector);
+    const text = normalizeText(el?.textContent);
+    if (text) return text;
+  }
+  return "";
+}
+
+function findAuthorForAnchor(anchor) {
+  const container = getAnchorContainer(anchor);
+  const author = findTextBySelectors(container, [
+    ".bili-video-card__info--author",
+    ".bili-video-card__info--owner",
+    ".bili-video-card__info--up",
+    ".up-name",
+    ".up-name__text",
+    ".author",
+    ".owner",
+    ".up-name__text a",
+    ".bili-video-card__info--author a",
+    ".bili-video-card__info--owner a",
+    ".bili-video-card__info--up a",
+  ]);
+  return author;
+}
+
+function findDurationForAnchor(anchor) {
+  const container = getAnchorContainer(anchor);
+  const duration = findTextBySelectors(container, [
+    ".bili-video-card__stats__duration",
+    ".bili-video-card__stats--duration",
+    ".bili-video-card__stats .duration",
+    ".bili-video-card__duration",
+    ".duration",
+    ".video-card__duration",
+    ".video-duration",
+    ".video-time",
+  ]);
+  if (duration) return duration;
+  return normalizeText(anchor.getAttribute("data-duration"));
+}
+
 function buildItemFromAnchor(anchor) {
   const url = anchor.href;
   const bvid = extractBvid(url);
@@ -250,8 +308,10 @@ function buildItemFromAnchor(anchor) {
     url,
     title: findAnchorTitle(anchor),
     cover: findAnchorCover(anchor),
+    author: findAuthorForAnchor(anchor),
     cid: null,
     duration: null,
+    durationText: findDurationForAnchor(anchor),
   };
 }
 
@@ -307,10 +367,7 @@ function ensureAddButton(anchor) {
   if (anchor.dataset.bqProcessed) return;
   anchor.dataset.bqProcessed = "true";
 
-  const container =
-    anchor.closest(
-      ".bili-video-card, .bili-video-card__wrap, .bili-video-card__image, .bili-video-card__cover, .video-card, .feed-card, .cover"
-    ) || anchor;
+  const container = getAnchorContainer(anchor);
 
   if (!container) return;
   container.classList.add("bq-add-wrap");
@@ -536,8 +593,10 @@ async function handleVideoPageChange() {
     url: location.href,
     title: document.title?.trim() || "Untitled",
     cover: null,
+    author: null,
     cid: null,
     duration: null,
+    durationText: null,
   };
 
   const insertIndex =
