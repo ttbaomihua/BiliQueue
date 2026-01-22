@@ -247,6 +247,10 @@ function findAnchorTitle(anchor) {
   const container = getAnchorContainer(anchor);
   const containerTitle = cleanTitle(
     findTextBySelectors(container, [
+      ".top-video__title",
+      ".top-video__title a",
+      ".bili-video-card__details .bili-video-card__title",
+      ".bili-video-card__details .bili-video-card__title a",
       ".video-page-card-small .info .title",
       ".video-page-card-small .title",
       ".bili-video-card__info--tit",
@@ -313,6 +317,23 @@ function normalizeText(value) {
   return String(value).replace(/\s+/g, " ").trim();
 }
 
+function isDurationText(value) {
+  const text = normalizeText(value);
+  if (!text) return false;
+  return /^\d{1,2}:\d{2}(:\d{2})?$/.test(text);
+}
+
+function findDurationBySelectors(container, selectors) {
+  for (const selector of selectors) {
+    const elements = Array.from(container.querySelectorAll(selector));
+    for (const el of elements) {
+      const text = normalizeText(el?.textContent);
+      if (isDurationText(text)) return text;
+    }
+  }
+  return "";
+}
+
 function cleanTitle(value) {
   const text = normalizeText(value);
   if (!text) return "";
@@ -330,11 +351,11 @@ function cleanTitle(value) {
 
 function getAnchorContainer(anchor) {
   const outer = anchor.closest(
-    ".bili-video-card, .video-card, .feed-card, .video-page-card-small"
+    ".bili-video-card, .video-card, .feed-card, .video-page-card-small, .top-video"
   );
   if (outer) return outer;
   const middle = anchor.closest(
-    ".bili-video-card__wrap, .bili-video-card__cover, .bili-video-card__image, .cover, .card-box"
+    ".bili-video-card__wrap, .bili-video-card__cover, .bili-video-card__image, .cover, .card-box, .top-video__cover"
   );
   if (middle) return middle;
   return anchor;
@@ -343,7 +364,7 @@ function getAnchorContainer(anchor) {
 function getCardContainer(anchor) {
   return (
     anchor.closest(
-      ".bili-video-card__wrap, .bili-video-card, .video-card, .feed-card, .video-page-card-small"
+      ".bili-video-card__wrap, .bili-video-card, .video-card, .feed-card, .video-page-card-small, .top-video"
     ) || getAnchorContainer(anchor)
   );
 }
@@ -372,6 +393,7 @@ function findAuthorForAnchor(anchor) {
   const author = findTextBySelectors(container, [
     ".video-page-card-small .upname .name",
     ".video-page-card-small .upname",
+    ".upinfo-detail__top .nickname",
     ".bili-video-card__info--author",
     ".bili-video-card__info--owner",
     ".bili-video-card__info--up",
@@ -384,24 +406,30 @@ function findAuthorForAnchor(anchor) {
     ".bili-video-card__info--owner a",
     ".bili-video-card__info--up a",
   ]);
-  return author;
+  if (author) return author;
+  const fallback = normalizeText(
+    document.querySelector(".upinfo-detail__top .nickname")?.textContent
+  );
+  return fallback;
 }
 
 function findDurationForAnchor(anchor) {
   const container = getAnchorContainer(anchor);
-  const duration = findTextBySelectors(container, [
+  const duration = findDurationBySelectors(container, [
     ".video-page-card-small .duration",
     ".bili-video-card__stats__duration",
     ".bili-video-card__stats--duration",
     ".bili-video-card__stats .duration",
     ".bili-video-card__duration",
-    ".duration",
     ".video-card__duration",
     ".video-duration",
     ".video-time",
+    ".bili-cover-card__stats .bili-cover-card__stat span",
+    ".bili-cover-card__stats span",
   ]);
   if (duration) return duration;
-  return normalizeText(anchor.getAttribute("data-duration"));
+  const fallback = normalizeText(anchor.getAttribute("data-duration"));
+  return isDurationText(fallback) ? fallback : "";
 }
 
 function buildItemFromAnchor(anchor) {
