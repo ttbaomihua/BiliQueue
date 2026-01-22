@@ -189,9 +189,7 @@ function ensureAddButtonStyles() {
   const style = document.createElement("style");
   style.id = ADD_BTN_STYLE_ID;
   style.textContent = `
-    .bq-add-wrap {
-      position: relative;
-    }
+    .bq-add-wrap {}
     .${ADD_BTN_CLASS} {
       --bq-add-size: 32px;
       --bq-add-gap: 8px;
@@ -212,10 +210,11 @@ function ensureAddButtonStyles() {
       padding: 0;
       display: grid;
       place-items: center;
+      pointer-events: auto;
       opacity: 0;
       transform: scale(0.92);
       transition: opacity 0.2s ease, transform 0.2s ease;
-      z-index: 2;
+      z-index: 20;
     }
     .${ADD_BTN_CLASS}::before {
       content: "";
@@ -224,7 +223,10 @@ function ensureAddButtonStyles() {
       background: no-repeat center / contain;
       background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M2.5 4h7.2' stroke='%23e9f0f6' stroke-width='1.6' stroke-linecap='round'/><path d='M2.5 8h7.2' stroke='%23e9f0f6' stroke-width='1.6' stroke-linecap='round'/><path d='M2.5 12h7.2' stroke='%23e9f0f6' stroke-width='1.6' stroke-linecap='round'/><path d='M11.2 5.3l2.8 2.7-2.8 2.7z' fill='%23e9f0f6'/></svg>");
     }
-    .bq-add-wrap:hover .${ADD_BTN_CLASS} {
+    .bq-add-wrap:hover .${ADD_BTN_CLASS},
+    .bq-add-card:hover .${ADD_BTN_CLASS},
+    .${ADD_BTN_CLASS}:hover,
+    .${ADD_BTN_CLASS}:focus-visible {
       opacity: 1;
       transform: scale(1);
     }
@@ -269,6 +271,24 @@ function findAnchorCover(anchor) {
   return img.getAttribute("data-src") || img.getAttribute("src");
 }
 
+function getAnchorHref(anchor) {
+  if (!anchor) return "";
+  const raw =
+    anchor.getAttribute("href") ||
+    anchor.getAttribute("data-href") ||
+    anchor.getAttribute("data-url") ||
+    anchor.dataset?.href ||
+    anchor.dataset?.url ||
+    "";
+  if (!raw) return anchor.href || "";
+  if (raw.startsWith("//")) return `${location.protocol}${raw}`;
+  try {
+    return new URL(raw, location.origin).toString();
+  } catch {
+    return raw;
+  }
+}
+
 function normalizeText(value) {
   if (!value) return "";
   return String(value).replace(/\s+/g, " ").trim();
@@ -290,11 +310,31 @@ function cleanTitle(value) {
 }
 
 function getAnchorContainer(anchor) {
+  const outer = anchor.closest(".bili-video-card, .video-card, .feed-card");
+  if (outer) return outer;
+  const middle = anchor.closest(
+    ".bili-video-card__wrap, .bili-video-card__cover, .bili-video-card__image, .cover"
+  );
+  if (middle) return middle;
+  return anchor;
+}
+
+function getCardContainer(anchor) {
   return (
     anchor.closest(
-      ".bili-video-card, .bili-video-card__wrap, .bili-video-card__image, .bili-video-card__cover, .video-card, .feed-card, .cover"
-    ) || anchor
+      ".bili-video-card__wrap, .bili-video-card, .video-card, .feed-card"
+    ) || getAnchorContainer(anchor)
   );
+}
+
+function applyAddWrap(container) {
+  container.classList.add("bq-add-wrap");
+  if (container.dataset.bqWrapApplied) return;
+  container.dataset.bqWrapApplied = "true";
+  const style = window.getComputedStyle(container);
+  if (style.position === "static") {
+    container.style.position = "relative";
+  }
 }
 
 function findTextBySelectors(container, selectors) {
@@ -341,7 +381,7 @@ function findDurationForAnchor(anchor) {
 }
 
 function buildItemFromAnchor(anchor) {
-  const url = anchor.href;
+  const url = getAnchorHref(anchor);
   const bvid = extractBvid(url);
   if (!bvid) return null;
   return {
@@ -365,6 +405,13 @@ function findNativeOverlayButton(container) {
 
   candidates.forEach((candidate) => {
     if (candidate.classList?.contains(ADD_BTN_CLASS)) return;
+    const label =
+      candidate.getAttribute("title") ||
+      candidate.getAttribute("aria-label") ||
+      candidate.getAttribute("data-tooltip-text") ||
+      candidate.getAttribute("data-title") ||
+      "";
+    const isWatchLater = /稍后再看|watch later/i.test(label);
     const style = window.getComputedStyle(candidate);
     if (style.position !== "absolute") return;
     const top = Number.parseFloat(style.top);
@@ -373,7 +420,10 @@ function findNativeOverlayButton(container) {
     if (top < -4 || right < -4 || top > 24 || right > 24) return;
     const rect = candidate.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
-    const score = Math.abs(top) + Math.abs(right) + rect.width * 0.1;
+    if (rect.width < 18 || rect.height < 18) return;
+    if (rect.width > 64 || rect.height > 64) return;
+    const score =
+      Math.abs(top) + Math.abs(right) + rect.width * 0.1 - (isWatchLater ? 80 : 0);
     if (score < bestScore) {
       best = candidate;
       bestScore = score;
@@ -383,8 +433,9 @@ function findNativeOverlayButton(container) {
   return best;
 }
 
-function positionAddButton(container, button) {
-  const nativeButton = findNativeOverlayButton(container);
+function positionAddButton(container, button, nativeButtonOverride) {
+  const nativeButton =
+    nativeButtonOverride || findNativeOverlayButton(container);
   if (!nativeButton) return;
   const containerRect = container.getBoundingClientRect();
   const nativeRect = nativeButton.getBoundingClientRect();
@@ -400,19 +451,52 @@ function positionAddButton(container, button) {
   }
 
   const gap = 8;
-  button.style.top = `${Math.max(0, offsetTop + size + gap)}px`;
+  const maxTop = Math.max(0, containerRect.height - size - 4);
+  const desiredTop = offsetTop + size + gap;
+  const clampedTop = Math.min(Math.max(0, desiredTop), maxTop);
+  button.style.top = `${clampedTop}px`;
   button.style.right = `${Math.max(0, offsetRight)}px`;
 }
 
-function ensureAddButton(anchor) {
-  if (anchor.dataset.bqProcessed) return;
-  anchor.dataset.bqProcessed = "true";
+function resolveAddButtonContainer(anchor) {
+  const base = getAnchorContainer(anchor);
+  const nativeButton = findNativeOverlayButton(base);
+  if (nativeButton) {
+    const offsetParent = nativeButton.offsetParent;
+    if (offsetParent instanceof HTMLElement && base.contains(offsetParent)) {
+      return { container: offsetParent, nativeButton };
+    }
+    if (
+      nativeButton.parentElement instanceof HTMLElement &&
+      base.contains(nativeButton.parentElement)
+    ) {
+      return { container: nativeButton.parentElement, nativeButton };
+    }
+  }
+  return { container: base, nativeButton };
+}
 
-  const container = getAnchorContainer(anchor);
+function ensureAddButton(anchor) {
+  const url = getAnchorHref(anchor);
+  const bvid = extractBvid(url);
+  if (!bvid) return;
+  if (anchor.dataset.bqProcessed && anchor.dataset.bqBvid === bvid) return;
+  anchor.dataset.bqProcessed = "true";
+  anchor.dataset.bqBvid = bvid;
+
+  const { container, nativeButton } = resolveAddButtonContainer(anchor);
+  const card = getCardContainer(anchor);
 
   if (!container) return;
-  container.classList.add("bq-add-wrap");
-  if (container.querySelector(`.${ADD_BTN_CLASS}`)) return;
+  applyAddWrap(container);
+  if (card) card.classList.add("bq-add-card");
+  const existingButton = container.querySelector(`.${ADD_BTN_CLASS}`);
+  if (existingButton) {
+    requestAnimationFrame(() => {
+      positionAddButton(container, existingButton, nativeButton);
+    });
+    return;
+  }
 
   const button = document.createElement("button");
   button.className = ADD_BTN_CLASS;
@@ -431,12 +515,14 @@ function ensureAddButton(anchor) {
 
   container.appendChild(button);
   requestAnimationFrame(() => {
-    positionAddButton(container, button);
+    positionAddButton(container, button, nativeButton);
   });
 }
 
 function scanForVideoAnchors(root = document) {
-  const anchors = root.querySelectorAll('a[href*="/video/BV"]');
+  const anchors = root.querySelectorAll(
+    'a[href*="/video/"], a[data-href*="/video/"], a[data-url*="/video/"]'
+  );
   anchors.forEach((anchor) => ensureAddButton(anchor));
 }
 
@@ -446,12 +532,17 @@ function initHoverAddButton() {
 
   const observer = new MutationObserver((mutations) => {
     mutations.forEach((mutation) => {
+      if (mutation.type === "attributes") {
+        const target = mutation.target;
+        if (target instanceof HTMLElement && target.tagName === "A") {
+          ensureAddButton(target);
+        }
+        return;
+      }
       mutation.addedNodes.forEach((node) => {
         if (!(node instanceof HTMLElement)) return;
         if (node.tagName === "A") {
-          if (node.getAttribute("href")?.includes("/video/BV")) {
-            ensureAddButton(node);
-          }
+          ensureAddButton(node);
           return;
         }
         scanForVideoAnchors(node);
@@ -462,6 +553,8 @@ function initHoverAddButton() {
   observer.observe(document.body, {
     childList: true,
     subtree: true,
+    attributes: true,
+    attributeFilter: ["href", "data-href", "data-url"],
   });
 }
 
