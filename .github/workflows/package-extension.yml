@@ -63,7 +63,7 @@ jobs:
             rsync -a build/ "$PKG_DIR/"
           elif [ -d src ]; then
             # copy source files into root of package (you can change this if your manifest points to different paths)
-            rsync -a src/ "$PKG_DIR/"
+            rsync -a src "$PKG_DIR/"
           else
             echo "No dist/build/src found — copying repository files except .git and node_modules"
             rsync -a --exclude='.git' --exclude='node_modules' ./ "$PKG_DIR/"
