@@ -1,0 +1,98 @@
+# Workflow: package-extension.yml
+# Packages the Chrome extension into a zip and uploads as an artifact.
+# If you push a tag (refs/tags/v*), it will create a GitHub Release and attach the zip.
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js (for optional build)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies (if package.json exists)
+        run: |
+          if [ -f package.json ]; then
+            npm ci
+          else
+            echo "no package.json, skipping npm install"
+          fi
+
+      - name: Run build (if npm run build exists)
+        run: |
+          if [ -f package.json ]; then
+            if npm run | grep -q 'build'; then
+              npm run build
+            else
+              echo "no build script, skipping build"
+            fi
+          else
+            echo "no package.json, skipping build"
+          fi
+
+      - name: Prepare package directory
+        run: |
+          set -e
+          PKG_DIR=package
+          rm -rf "$PKG_DIR"
+          mkdir -p "$PKG_DIR"
+
+          # copy manifest.json (expected at repo root)
+          if [ -f manifest.json ]; then
+            cp manifest.json "$PKG_DIR/"
+          else
+            echo "WARNING: manifest.json not found at repo root"
+          fi
+
+          # Prefer `dist/` (common build output); if not present, copy `src/`.
+          if [ -d dist ]; then
+            rsync -a dist/ "$PKG_DIR/"
+          elif [ -d build ] && [ "$(ls -A build)" ]; then
+            rsync -a build/ "$PKG_DIR/"
+          elif [ -d src ]; then
+            # copy source files into root of package (you can change this if your manifest points to different paths)
+            rsync -a src/ "$PKG_DIR/"
+          else
+            echo "No dist/build/src found — copying repository files except .git and node_modules"
+            rsync -a --exclude='.git' --exclude='node_modules' ./ "$PKG_DIR/"
+          fi
+
+          # copy icons if any
+          if [ -d icons ]; then
+            rsync -a icons "$PKG_DIR/" || true
+          fi
+
+      - name: Create zip (Chrome extension zip)
+        run: |
+          set -e
+          OUT_NAME="BiliQueue-${{ github.run_id }}.zip"
+          cd package
+          # Zip all files at package root into one zip
+          zip -r "../${OUT_NAME}" ./*
+          cd ..
+          ls -lh "${OUT_NAME}"
+
+      - name: Upload packaged zip as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: biliqueue-extension
+          path: BiliQueue-*.zip
+
+      - name: Create GitHub Release and attach zip (on tag)
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ github.ref_name }}
+          files: BiliQueue-*.zip
