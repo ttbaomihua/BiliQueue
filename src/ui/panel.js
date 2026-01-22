@@ -63,26 +63,26 @@ function ensureStyles() {
       display: flex;
       align-items: flex-start;
       justify-content: space-between;
-      padding: 16px;
+      padding: 14px 16px 2px;
       background: #ffffff;
     }
     .bq-header-left {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 2px;
     }
     .bq-actions {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 0 16px 12px;
+      gap: 10px;
+      padding: 0 16px 2px;
       color: var(--bq-text);
     }
     .bq-action {
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 600;
       color: var(--bq-text);
       background: transparent;
@@ -91,27 +91,25 @@ function ensureStyles() {
       cursor: pointer;
     }
     .bq-action svg {
-      width: 22px;
-      height: 22px;
+      width: 20px;
+      height: 20px;
       display: block;
     }
     .bq-action-clear {
       margin-left: auto;
       color: var(--bq-text);
-      background: #e6e7e9;
-      padding: 6px 14px;
-      border-radius: 999px;
+      padding: 0;
     }
     .bq-action-clear:hover {
-      background: #dfe1e4;
+      color: #111827;
     }
     .bq-title {
-      font-size: 20px;
+      font-size: 18px;
       font-weight: 600;
       letter-spacing: 0.1px;
     }
     .bq-count {
-      font-size: 13px;
+      font-size: 12px;
       color: var(--bq-muted);
     }
     .bq-minimize {
