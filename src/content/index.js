@@ -350,12 +350,16 @@ function cleanTitle(value) {
 }
 
 function getAnchorContainer(anchor) {
+  const topVideo = anchor.closest(".top-video");
+  if (topVideo) return topVideo;
+  const wrap = anchor.closest(".bili-video-card__wrap");
+  if (wrap) return wrap;
   const outer = anchor.closest(
-    ".bili-video-card, .video-card, .feed-card, .video-page-card-small, .top-video"
+    ".bili-video-card, .video-card, .feed-card, .video-page-card-small"
   );
   if (outer) return outer;
   const middle = anchor.closest(
-    ".bili-video-card__wrap, .bili-video-card__cover, .bili-video-card__image, .cover, .card-box, .top-video__cover"
+    ".bili-video-card__cover, .bili-video-card__image, .cover, .card-box, .top-video__cover"
   );
   if (middle) return middle;
   return anchor;
