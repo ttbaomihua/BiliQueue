@@ -45,8 +45,11 @@ chrome.runtime.onInstalled.addListener(() => {
       id: MENU_ID,
       title: "Add to queue",
       contexts: ["link"],
-      documentUrlPatterns: ["https://*.bilibili.com/*"],
-      targetUrlPatterns: ["https://*.bilibili.com/*"],
+      documentUrlPatterns: [
+        "https://*.bilibili.com/*",
+        "https://bilibili.com/*",
+      ],
+      targetUrlPatterns: ["https://*.bilibili.com/*", "https://bilibili.com/*"],
     });
   });
 });

@@ -101,7 +101,7 @@ async function setCurrentIndex(currentIndex) {
 }
 
 function extractBvid(url) {
-  const match = url.match(/\\/video\\/(BV[\\w]+)/i);
+  const match = url.match(/\/video\/(BV[\w]+)/i);
   return match ? match[1] : null;
 }
 
@@ -428,7 +428,7 @@ function initPlayerHook() {
 }
 
 function isVideoPage(url) {
-  return /\\/video\\/BV[\\w]+/i.test(url);
+  return "/\/video\/BV[\\w]+/i".test(url);
 }
 
 function getCurrentVideoBvid() {
