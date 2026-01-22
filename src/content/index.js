@@ -247,6 +247,8 @@ function findAnchorTitle(anchor) {
   const container = getAnchorContainer(anchor);
   const containerTitle = cleanTitle(
     findTextBySelectors(container, [
+      ".video-page-card-small .info .title",
+      ".video-page-card-small .title",
       ".bili-video-card__info--tit",
       ".bili-video-card__info--title",
       ".bili-video-card__title",
@@ -271,7 +273,12 @@ function findAnchorTitle(anchor) {
   const text = cleanTitle(anchor.textContent);
   if (text) return text;
 
-  return cleanTitle(document.title) || "Untitled";
+  const anchorBvid = extractBvid(getAnchorHref(anchor));
+  const currentBvid = getCurrentVideoBvid();
+  if (anchorBvid && currentBvid && anchorBvid === currentBvid) {
+    return cleanTitle(document.title) || "Untitled";
+  }
+  return "Untitled";
 }
 
 function findAnchorCover(anchor) {
@@ -319,10 +326,12 @@ function cleanTitle(value) {
 }
 
 function getAnchorContainer(anchor) {
-  const outer = anchor.closest(".bili-video-card, .video-card, .feed-card");
+  const outer = anchor.closest(
+    ".bili-video-card, .video-card, .feed-card, .video-page-card-small"
+  );
   if (outer) return outer;
   const middle = anchor.closest(
-    ".bili-video-card__wrap, .bili-video-card__cover, .bili-video-card__image, .cover"
+    ".bili-video-card__wrap, .bili-video-card__cover, .bili-video-card__image, .cover, .card-box"
   );
   if (middle) return middle;
   return anchor;
@@ -331,7 +340,7 @@ function getAnchorContainer(anchor) {
 function getCardContainer(anchor) {
   return (
     anchor.closest(
-      ".bili-video-card__wrap, .bili-video-card, .video-card, .feed-card"
+      ".bili-video-card__wrap, .bili-video-card, .video-card, .feed-card, .video-page-card-small"
     ) || getAnchorContainer(anchor)
   );
 }
@@ -358,6 +367,8 @@ function findTextBySelectors(container, selectors) {
 function findAuthorForAnchor(anchor) {
   const container = getAnchorContainer(anchor);
   const author = findTextBySelectors(container, [
+    ".video-page-card-small .upname .name",
+    ".video-page-card-small .upname",
     ".bili-video-card__info--author",
     ".bili-video-card__info--owner",
     ".bili-video-card__info--up",
@@ -376,6 +387,7 @@ function findAuthorForAnchor(anchor) {
 function findDurationForAnchor(anchor) {
   const container = getAnchorContainer(anchor);
   const duration = findTextBySelectors(container, [
+    ".video-page-card-small .duration",
     ".bili-video-card__stats__duration",
     ".bili-video-card__stats--duration",
     ".bili-video-card__stats .duration",
