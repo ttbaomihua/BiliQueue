@@ -142,6 +142,7 @@ function ensureStyles() {
       background: #f6f7f8;
       cursor: grab;
       transition: border 0.2s ease, background 0.2s ease;
+      position: relative;
     }
     .bq-item.is-current {
       border-color: #ead9c6;
@@ -196,19 +197,82 @@ function ensureStyles() {
     .bq-item-meta.is-empty {
       display: none;
     }
-    .bq-remove {
-      background: transparent;
-      border: none;
-      color: var(--bq-muted);
-      font-size: 12px;
-      padding: 4px 6px;
-      border-radius: 8px;
-      cursor: pointer;
-      align-self: flex-start;
+    .bq-item-actions {
+      margin-left: auto;
+      align-self: center;
+      position: relative;
     }
-    .bq-remove:hover {
-      color: var(--bq-text);
+    .bq-menu-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 10px;
+      border: none;
+      background: transparent;
+      color: var(--bq-muted);
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.15s ease, background 0.15s ease;
+    }
+    .bq-menu-btn svg {
+      width: 18px;
+      height: 18px;
+      display: block;
+      fill: currentColor;
+    }
+    .bq-item:hover .bq-menu-btn,
+    .bq-menu-btn:focus-visible {
+      opacity: 1;
+    }
+    .bq-menu-btn:hover {
       background: rgba(0, 0, 0, 0.05);
+      color: var(--bq-text);
+    }
+    .bq-menu {
+      position: absolute;
+      right: 0;
+      top: 30px;
+      min-width: 180px;
+      padding: 6px;
+      background: #ffffff;
+      border: 1px solid var(--bq-border);
+      border-radius: 12px;
+      box-shadow: 0 16px 30px rgba(0, 0, 0, 0.12);
+      opacity: 0;
+      pointer-events: none;
+      transform: translateY(-6px);
+      transition: opacity 0.15s ease, transform 0.15s ease;
+      z-index: 5;
+    }
+    .bq-item-actions:hover .bq-menu,
+    .bq-menu:focus-within {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateY(0);
+    }
+    .bq-menu-item {
+      width: 100%;
+      border: none;
+      background: transparent;
+      padding: 8px 10px;
+      border-radius: 8px;
+      font-size: 13px;
+      color: var(--bq-text);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-align: left;
+      cursor: pointer;
+    }
+    .bq-menu-item:hover {
+      background: #f2f3f5;
+    }
+    .bq-menu-item.is-danger {
+      color: #b42318;
+    }
+    .bq-menu-item.is-danger:hover {
+      background: #fde8e6;
     }
     .bq-minimized {
       display: none;
@@ -406,16 +470,57 @@ function renderQueue(queue) {
     info.appendChild(title);
     info.appendChild(meta);
 
+    const actions = document.createElement("div");
+    actions.className = "bq-item-actions";
+
+    const menuButton = document.createElement("button");
+    menuButton.className = "bq-menu-btn";
+    menuButton.type = "button";
+    menuButton.setAttribute("aria-label", "Item actions");
+    menuButton.innerHTML = `
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="5" r="2"></circle>
+        <circle cx="12" cy="12" r="2"></circle>
+        <circle cx="12" cy="19" r="2"></circle>
+      </svg>
+    `;
+
+    const menu = document.createElement("div");
+    menu.className = "bq-menu";
+
+    const saveLater = document.createElement("button");
+    saveLater.className = "bq-menu-item";
+    saveLater.type = "button";
+    saveLater.textContent = "Save to Watch Later";
+    saveLater.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
+
+    const saveFavorite = document.createElement("button");
+    saveFavorite.className = "bq-menu-item";
+    saveFavorite.type = "button";
+    saveFavorite.textContent = "Save to Favorite Folder";
+    saveFavorite.addEventListener("click", (event) => {
+      event.stopPropagation();
+    });
+
     const remove = document.createElement("button");
-    remove.className = "bq-remove";
+    remove.className = "bq-menu-item is-danger";
     remove.type = "button";
-    remove.textContent = "Remove";
+    remove.textContent = "Remove from the Queue";
     remove.addEventListener("click", (event) => {
       event.stopPropagation();
       if (item.bvid && window.BiliQueue?.removeQueueItem) {
         window.BiliQueue.removeQueueItem(item.bvid);
       }
     });
+
+    menu.appendChild(saveLater);
+    menu.appendChild(saveFavorite);
+    menu.appendChild(remove);
+
+    actions.appendChild(menuButton);
+    actions.appendChild(menu);
 
     row.addEventListener("dragstart", (event) => {
       event.dataTransfer.effectAllowed = "move";
@@ -439,8 +544,16 @@ function renderQueue(queue) {
     });
 
     row.addEventListener("click", (event) => {
-      if (event.target.closest("button")) return;
+      if (
+        event.target.closest(".bq-menu") ||
+        event.target.closest(".bq-menu-btn") ||
+        event.target.closest(".bq-menu-item")
+      )
+        return;
       if (!item.url) return;
+      if (window.BiliQueue?.markAutoplayNext) {
+        window.BiliQueue.markAutoplayNext();
+      }
       if (window.BiliQueue?.setCurrentIndex) {
         window.BiliQueue.setCurrentIndex(index);
       }
@@ -451,7 +564,7 @@ function renderQueue(queue) {
 
     row.appendChild(cover);
     row.appendChild(info);
-    row.appendChild(remove);
+    row.appendChild(actions);
     list.appendChild(row);
   });
 }
