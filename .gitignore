@@ -8,4 +8,6 @@
 .LSOverride
 
 .devcontainer/*
+docs/*
 
+AGENTS.md
