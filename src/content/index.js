@@ -107,8 +107,11 @@ function extractBvid(url) {
 
 function findTitleForUrl(url) {
   const anchor = document.querySelector(`a[href="${url}"]`);
-  if (anchor?.textContent?.trim()) return anchor.textContent.trim();
-  return document.title?.trim() || "Untitled";
+  if (anchor) {
+    const title = findAnchorTitle(anchor);
+    if (title) return title;
+  }
+  return cleanTitle(document.title) || "Untitled";
 }
 
 async function handleContextAdd(payload) {
@@ -230,11 +233,34 @@ function ensureAddButtonStyles() {
 }
 
 function findAnchorTitle(anchor) {
-  if (anchor.getAttribute("title")) return anchor.getAttribute("title").trim();
-  if (anchor.getAttribute("aria-label"))
-    return anchor.getAttribute("aria-label").trim();
-  const text = anchor.textContent?.trim();
-  return text || document.title?.trim() || "Untitled";
+  const container = getAnchorContainer(anchor);
+  const containerTitle = cleanTitle(
+    findTextBySelectors(container, [
+      ".bili-video-card__info--tit",
+      ".bili-video-card__info--title",
+      ".bili-video-card__title",
+      ".video-card__info--title",
+      ".video-card__title",
+      ".video-title",
+      ".title",
+      ".bili-video-card__info--tit a",
+      ".bili-video-card__info--title a",
+      ".bili-video-card__title a",
+      ".video-card__title a",
+    ])
+  );
+  if (containerTitle) return containerTitle;
+
+  const attrTitle = cleanTitle(anchor.getAttribute("title"));
+  if (attrTitle) return attrTitle;
+
+  const ariaTitle = cleanTitle(anchor.getAttribute("aria-label"));
+  if (ariaTitle) return ariaTitle;
+
+  const text = cleanTitle(anchor.textContent);
+  if (text) return text;
+
+  return cleanTitle(document.title) || "Untitled";
 }
 
 function findAnchorCover(anchor) {
@@ -246,6 +272,21 @@ function findAnchorCover(anchor) {
 function normalizeText(value) {
   if (!value) return "";
   return String(value).replace(/\s+/g, " ").trim();
+}
+
+function cleanTitle(value) {
+  const text = normalizeText(value);
+  if (!text) return "";
+  const lower = text.toLowerCase();
+  if (
+    text.includes("稍后再看") ||
+    text.includes("正在缓冲") ||
+    lower.includes("watch later") ||
+    lower.includes("buffering")
+  ) {
+    return "";
+  }
+  return text;
 }
 
 function getAnchorContainer(anchor) {
