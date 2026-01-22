@@ -46,32 +46,34 @@ jobs:
         run: |
           set -e
           PKG_DIR=package
+          ROOT_NAME="BiliQueue-${{ github.run_id }}"
+          ROOT_DIR="$PKG_DIR/$ROOT_NAME"
           rm -rf "$PKG_DIR"
-          mkdir -p "$PKG_DIR"
+          mkdir -p "$ROOT_DIR"
 
           # copy manifest.json (expected at repo root)
           if [ -f manifest.json ]; then
-            cp manifest.json "$PKG_DIR/"
+            cp manifest.json "$ROOT_DIR/"
           else
             echo "WARNING: manifest.json not found at repo root"
           fi
 
           # Prefer `dist/` (common build output); if not present, copy `src/`.
           if [ -d dist ]; then
-            rsync -a dist/ "$PKG_DIR/"
+            rsync -a dist/ "$ROOT_DIR/"
           elif [ -d build ] && [ "$(ls -A build)" ]; then
-            rsync -a build/ "$PKG_DIR/"
+            rsync -a build/ "$ROOT_DIR/"
           elif [ -d src ]; then
-            # copy source files into root of package (you can change this if your manifest points to different paths)
-            rsync -a src "$PKG_DIR/"
+            # preserve src/ folder at package root
+            rsync -a src "$ROOT_DIR/"
           else
             echo "No dist/build/src found — copying repository files except .git and node_modules"
-            rsync -a --exclude='.git' --exclude='node_modules' ./ "$PKG_DIR/"
+            rsync -a --exclude='.git' --exclude='node_modules' ./ "$ROOT_DIR/"
           fi
 
           # copy icons if any
           if [ -d icons ]; then
-            rsync -a icons "$PKG_DIR/" || true
+            rsync -a icons "$ROOT_DIR/" || true
           fi
 
       - name: Create zip (Chrome extension zip)
@@ -79,8 +81,8 @@ jobs:
           set -e
           OUT_NAME="BiliQueue-${{ github.run_id }}.zip"
           cd package
-          # Zip all files at package root into one zip
-          zip -r "../${OUT_NAME}" ./*
+          # Zip the root folder into one zip
+          zip -r "../${OUT_NAME}" "BiliQueue-${{ github.run_id }}"
           cd ..
           ls -lh "${OUT_NAME}"
 
