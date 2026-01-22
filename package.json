@@ -1,0 +1,11 @@
+{
+  "name": "biliqueue",
+  "version": "0.1.0",
+  "description": "Tab-level enhancement for temporary queue for Bilibili",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
