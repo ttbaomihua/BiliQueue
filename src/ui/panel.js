@@ -64,13 +64,46 @@ function ensureStyles() {
       align-items: flex-start;
       justify-content: space-between;
       padding: 16px;
-      border-bottom: 1px solid var(--bq-border);
       background: #ffffff;
     }
     .bq-header-left {
       display: flex;
       flex-direction: column;
       gap: 6px;
+    }
+    .bq-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 16px 12px;
+      color: var(--bq-text);
+    }
+    .bq-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--bq-text);
+      background: transparent;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+    }
+    .bq-action svg {
+      width: 22px;
+      height: 22px;
+      display: block;
+    }
+    .bq-action-clear {
+      margin-left: auto;
+      color: var(--bq-text);
+      background: #e6e7e9;
+      padding: 6px 14px;
+      border-radius: 999px;
+    }
+    .bq-action-clear:hover {
+      background: #dfe1e4;
     }
     .bq-title {
       font-size: 20px;
@@ -93,7 +126,7 @@ function ensureStyles() {
     }
     .bq-body {
       overflow: auto;
-      padding: 6px 0;
+      padding: 0 0 6px;
     }
     .bq-list {
       display: flex;
@@ -245,6 +278,33 @@ function createPanel() {
   header.appendChild(headerLeft);
   header.appendChild(minimize);
 
+  const actions = document.createElement("div");
+  actions.className = "bq-actions";
+
+  const save = document.createElement("button");
+  save.className = "bq-action";
+  save.type = "button";
+  save.innerHTML = `
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M7 3h10a2 2 0 0 1 2 2v16l-7-4-7 4V5a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/>
+    </svg>
+    <span>Save</span>
+  `;
+
+  const clear = document.createElement("button");
+  clear.className = "bq-action bq-action-clear";
+  clear.type = "button";
+  clear.textContent = "Clear";
+  clear.addEventListener("click", () => {
+    if (window.BiliQueue?.setQueue) {
+      window.BiliQueue.setQueue(null);
+      return;
+    }
+  });
+
+  actions.appendChild(save);
+  actions.appendChild(clear);
+
   const body = document.createElement("div");
   body.className = "bq-body";
 
@@ -276,6 +336,7 @@ function createPanel() {
   });
 
   panel.appendChild(header);
+  panel.appendChild(actions);
   panel.appendChild(body);
   panel.appendChild(minimized);
 

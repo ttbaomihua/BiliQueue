@@ -100,6 +100,15 @@ async function setCurrentIndex(currentIndex) {
   return response;
 }
 
+async function setQueue(queue) {
+  const response = await sendQueueMessage({
+    type: MESSAGE_TYPES.QUEUE_SET,
+    queue,
+  });
+  if (response?.ok) setQueueState(response.queue ?? null);
+  return response;
+}
+
 function extractBvid(url) {
   const match = url.match(/\/video\/(BV[\w]+)/i);
   return match ? match[1] : null;
@@ -812,6 +821,7 @@ window.BiliQueue = {
   removeQueueItem,
   reorderQueue,
   setCurrentIndex,
+  setQueue,
   showToast,
 };
 
