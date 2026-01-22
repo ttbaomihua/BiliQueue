@@ -293,8 +293,11 @@ function getAnchorHref(anchor) {
     anchor.getAttribute("href") ||
     anchor.getAttribute("data-href") ||
     anchor.getAttribute("data-url") ||
+    anchor.getAttribute("data-target-url") ||
+    anchor.getAttribute("data-targetUrl") ||
     anchor.dataset?.href ||
     anchor.dataset?.url ||
+    anchor.dataset?.targetUrl ||
     "";
   if (!raw) return anchor.href || "";
   if (raw.startsWith("//")) return `${location.protocol}${raw}`;
@@ -542,7 +545,7 @@ function ensureAddButton(anchor) {
 
 function scanForVideoAnchors(root = document) {
   const anchors = root.querySelectorAll(
-    'a[href*="/video/"], a[data-href*="/video/"], a[data-url*="/video/"]'
+    'a[href*="/video/"], a[data-href*="/video/"], a[data-url*="/video/"], a[data-target-url*="/video/"], a[data-targetUrl*="/video/"]'
   );
   anchors.forEach((anchor) => ensureAddButton(anchor));
 }
@@ -575,7 +578,13 @@ function initHoverAddButton() {
     childList: true,
     subtree: true,
     attributes: true,
-    attributeFilter: ["href", "data-href", "data-url"],
+    attributeFilter: [
+      "href",
+      "data-href",
+      "data-url",
+      "data-target-url",
+      "data-targetUrl",
+    ],
   });
 }
 
