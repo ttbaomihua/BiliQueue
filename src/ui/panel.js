@@ -263,6 +263,17 @@ function renderQueue(queue) {
       }
     });
 
+    row.addEventListener("click", (event) => {
+      if (event.target.closest("button")) return;
+      if (!item.url) return;
+      if (window.BiliQueue?.setCurrentIndex) {
+        window.BiliQueue.setCurrentIndex(index);
+      }
+      if (item.url !== location.href) {
+        location.href = item.url;
+      }
+    });
+
     row.appendChild(title);
     row.appendChild(remove);
     list.appendChild(row);

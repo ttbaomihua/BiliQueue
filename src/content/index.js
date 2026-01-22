@@ -188,23 +188,36 @@ function ensureAddButtonStyles() {
       position: relative;
     }
     .${ADD_BTN_CLASS} {
+      --bq-add-size: 32px;
+      --bq-add-gap: 8px;
       position: absolute;
-      top: 8px;
+      top: calc(8px + var(--bq-add-size) + var(--bq-add-gap));
       right: 8px;
-      width: 26px;
-      height: 26px;
-      border-radius: 50%;
-      border: 1px solid rgba(255, 255, 255, 0.3);
-      background: rgba(18, 22, 28, 0.8);
+      width: var(--bq-add-size);
+      height: var(--bq-add-size);
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.28);
+      background: rgba(16, 20, 24, 0.72);
+      box-shadow: 0 6px 16px rgba(0, 0, 0, 0.28);
       color: #e9f0f6;
-      font-size: 16px;
-      line-height: 24px;
+      font-size: 0;
+      line-height: 0;
       text-align: center;
       cursor: pointer;
+      padding: 0;
+      display: grid;
+      place-items: center;
       opacity: 0;
       transform: scale(0.92);
       transition: opacity 0.2s ease, transform 0.2s ease;
       z-index: 2;
+    }
+    .${ADD_BTN_CLASS}::before {
+      content: "";
+      width: 16px;
+      height: 16px;
+      background: no-repeat center / contain;
+      background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path d='M2.5 4h7.2' stroke='%23e9f0f6' stroke-width='1.6' stroke-linecap='round'/><path d='M2.5 8h7.2' stroke='%23e9f0f6' stroke-width='1.6' stroke-linecap='round'/><path d='M2.5 12h7.2' stroke='%23e9f0f6' stroke-width='1.6' stroke-linecap='round'/><path d='M11.2 5.3l2.8 2.7-2.8 2.7z' fill='%23e9f0f6'/></svg>");
     }
     .bq-add-wrap:hover .${ADD_BTN_CLASS} {
       opacity: 1;
@@ -242,6 +255,54 @@ function buildItemFromAnchor(anchor) {
   };
 }
 
+function findNativeOverlayButton(container) {
+  const candidates = Array.from(
+    container.querySelectorAll("button, a, div, span")
+  );
+  let best = null;
+  let bestScore = Infinity;
+
+  candidates.forEach((candidate) => {
+    if (candidate.classList?.contains(ADD_BTN_CLASS)) return;
+    const style = window.getComputedStyle(candidate);
+    if (style.position !== "absolute") return;
+    const top = Number.parseFloat(style.top);
+    const right = Number.parseFloat(style.right);
+    if (!Number.isFinite(top) || !Number.isFinite(right)) return;
+    if (top < -4 || right < -4 || top > 24 || right > 24) return;
+    const rect = candidate.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const score = Math.abs(top) + Math.abs(right) + rect.width * 0.1;
+    if (score < bestScore) {
+      best = candidate;
+      bestScore = score;
+    }
+  });
+
+  return best;
+}
+
+function positionAddButton(container, button) {
+  const nativeButton = findNativeOverlayButton(container);
+  if (!nativeButton) return;
+  const containerRect = container.getBoundingClientRect();
+  const nativeRect = nativeButton.getBoundingClientRect();
+  if (!containerRect.width || !nativeRect.width) return;
+
+  const offsetTop = nativeRect.top - containerRect.top;
+  const offsetRight = containerRect.right - nativeRect.right;
+  if (!Number.isFinite(offsetTop) || !Number.isFinite(offsetRight)) return;
+
+  const size = Math.round(nativeRect.height);
+  if (Number.isFinite(size) && size > 0) {
+    button.style.setProperty("--bq-add-size", `${size}px`);
+  }
+
+  const gap = 8;
+  button.style.top = `${Math.max(0, offsetTop + size + gap)}px`;
+  button.style.right = `${Math.max(0, offsetRight)}px`;
+}
+
 function ensureAddButton(anchor) {
   if (anchor.dataset.bqProcessed) return;
   anchor.dataset.bqProcessed = "true";
@@ -258,7 +319,8 @@ function ensureAddButton(anchor) {
   const button = document.createElement("button");
   button.className = ADD_BTN_CLASS;
   button.type = "button";
-  button.textContent = "+";
+  button.setAttribute("aria-label", "Add to queue");
+  button.setAttribute("title", "Add to queue");
   button.addEventListener("click", (event) => {
     event.preventDefault();
     event.stopPropagation();
@@ -270,6 +332,9 @@ function ensureAddButton(anchor) {
   });
 
   container.appendChild(button);
+  requestAnimationFrame(() => {
+    positionAddButton(container, button);
+  });
 }
 
 function scanForVideoAnchors(root = document) {
