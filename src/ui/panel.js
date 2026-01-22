@@ -265,11 +265,22 @@ function ensureStyles() {
       text-align: left;
       cursor: pointer;
     }
+    .bq-menu-item svg {
+      width: 18px;
+      height: 18px;
+      display: block;
+      stroke: currentColor;
+      fill: none;
+    }
     .bq-menu-item:hover {
       background: #f2f3f5;
     }
     .bq-menu-item.is-danger {
       color: #b42318;
+    }
+    .bq-menu-item.is-danger svg {
+      stroke: currentColor;
+      fill: none;
     }
     .bq-menu-item.is-danger:hover {
       background: #fde8e6;
@@ -491,7 +502,13 @@ function renderQueue(queue) {
     const saveLater = document.createElement("button");
     saveLater.className = "bq-menu-item";
     saveLater.type = "button";
-    saveLater.textContent = "Save to Watch Later";
+    saveLater.innerHTML = `
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <circle cx="12" cy="12" r="9" stroke-width="2"></circle>
+        <path d="M12 7v5l3 2" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+      </svg>
+      <span>Save to Watch Later</span>
+    `;
     saveLater.addEventListener("click", (event) => {
       event.stopPropagation();
     });
@@ -499,7 +516,12 @@ function renderQueue(queue) {
     const saveFavorite = document.createElement("button");
     saveFavorite.className = "bq-menu-item";
     saveFavorite.type = "button";
-    saveFavorite.textContent = "Save to Favorite Folder";
+    saveFavorite.innerHTML = `
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M6 4h12a2 2 0 0 1 2 2v14l-8-4-8 4V6a2 2 0 0 1 2-2z" stroke-width="2" stroke-linejoin="round"></path>
+      </svg>
+      <span>Save to Favorite</span>
+    `;
     saveFavorite.addEventListener("click", (event) => {
       event.stopPropagation();
     });
@@ -507,7 +529,15 @@ function renderQueue(queue) {
     const remove = document.createElement("button");
     remove.className = "bq-menu-item is-danger";
     remove.type = "button";
-    remove.textContent = "Remove from the Queue";
+    remove.innerHTML = `
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M4 7h16" stroke-width="2" stroke-linecap="round"></path>
+        <path d="M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" stroke-width="2" stroke-linejoin="round"></path>
+        <path d="M7 7l1 12a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2l1-12" stroke-width="2" stroke-linejoin="round"></path>
+        <path d="M10 11v6M14 11v6" stroke-width="2" stroke-linecap="round"></path>
+      </svg>
+      <span>Remove this item</span>
+    `;
     remove.addEventListener("click", (event) => {
       event.stopPropagation();
       if (item.bvid && window.BiliQueue?.removeQueueItem) {
